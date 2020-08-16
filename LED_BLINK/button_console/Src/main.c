@@ -113,6 +113,8 @@ int main(void)
 			filePointer = fopen("C:\\Users\\Monster Servis\\Desktop\\hevbe.txt","w");
 			fprintf(filePointer, "%s %s %s", str1, str2, str3);
 
+            // i was trying to do some file operation through the internal button. i was not aware of that i couldn't do it that way
+
 		
 		
 		
