@@ -1,0 +1,25 @@
+--cpu=Cortex-M4.fp.sp
+"external_led\startup_stm32f407xx.o"
+"external_led\main.o"
+"external_led\stm32f4xx_it.o"
+"external_led\stm32f4xx_hal_msp.o"
+"external_led\stm32f4xx_hal_tim.o"
+"external_led\stm32f4xx_hal_tim_ex.o"
+"external_led\stm32f4xx_hal_rcc.o"
+"external_led\stm32f4xx_hal_rcc_ex.o"
+"external_led\stm32f4xx_hal_flash.o"
+"external_led\stm32f4xx_hal_flash_ex.o"
+"external_led\stm32f4xx_hal_flash_ramfunc.o"
+"external_led\stm32f4xx_hal_gpio.o"
+"external_led\stm32f4xx_hal_dma_ex.o"
+"external_led\stm32f4xx_hal_dma.o"
+"external_led\stm32f4xx_hal_pwr.o"
+"external_led\stm32f4xx_hal_pwr_ex.o"
+"external_led\stm32f4xx_hal_cortex.o"
+"external_led\stm32f4xx_hal.o"
+"external_led\stm32f4xx_hal_exti.o"
+"external_led\system_stm32f4xx.o"
+--library_type=microlib --strict --scatter "external_led\external_led.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "external_led.map" -o external_led\external_led.axf
