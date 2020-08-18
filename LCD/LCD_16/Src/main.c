@@ -103,7 +103,7 @@ int main(void)
 		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0))
 		{
 		LCD1602_1stLine();
-		LCD1602_print("-");
+		LCD1602_print("123 qwe +- ()=");
 			
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
 			
@@ -114,7 +114,7 @@ int main(void)
 		else
 		{
 		LCD1602_1stLine();
-		LCD1602_print("+");
+		LCD1602_print("ABC abc £#$ ");
 			
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
 			
