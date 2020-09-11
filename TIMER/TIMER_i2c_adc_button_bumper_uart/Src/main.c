@@ -27,6 +27,7 @@
 #include "stdio.h"
 #include "string.h"
 
+
 #include "STM_MY_LCD16X2.h"
 
 
@@ -40,6 +41,12 @@
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
 #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+
+#ifdef __GNUC__
+#define GETCHAR_PROTOTYPE int __io_getchar (void)
+#else
+#define GETCHAR_PROTOTYPE int fgetc(FILE * f)
 #endif /* __GNUC__ */
 
 /* USER CODE END PTD */
@@ -80,19 +87,161 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-int seconds = 50;
-int minutes = 59;
-int hours = 23;
-int days = 0;
+int seconds;
+int minutes;
+int hours;
+int days;
+
+int alarmCnt;
+int alarmHrs;
+int alarmMin;
+int alarmSec;
 
 
 
-int alarmCnt = 0;
-int alarmHrs = 0;
-int alarmMin = 0;
-int alarmSec = 10;
+
+void letFire(void){
+	for (int i=0; i < 3; i++){
+			
+			if ( hours == alarmHrs && minutes == alarmMin && seconds == alarmSec ){
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+				alarmSec = alarmSec + 30*i;
+				printf("ALARM !!!\n");
+				lcd_clear_line(1);
+				lcd_put_cur(1,0);
+				lcd_send_string("ALARM !!!");
+			}
+			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin && seconds == alarmSec-20) ){
+				lcd_clear_line(1);
+				lcd_put_cur(1,0);
+				lcd_send_string("20 SN ERTELENDI");
+				printf("20 SN ERTELENDI\n");
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+			}
+			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin+1 && seconds == 0) ){
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+				printf("ALARM !!!\n");
+				lcd_clear_line(1);
+				lcd_put_cur(1,0);
+				lcd_send_string("ALARM !!!");
+			}
+	}
+}
+
+void letWater(void){
+	if  ( !HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)){
+				printf("ALARM IPTAL EDILDI\n");
+				alarmCnt++;
+				lcd_clear_line(1);
+				lcd_put_cur(1,0);
+				lcd_send_string("ALARM IPTAL EDILDI");
+		}
+}
 
 
+void setAlarm(){
+	int hrs;
+	int min;
+	int sec;
+	printf("Alarmi ayarlayin:  \n");
+	scanf("%d\n", &hrs);
+	scanf("%d\n", &min );
+	scanf("%d\n", &sec );
+	alarmHrs = hrs;
+	alarmMin = min;
+	alarmSec = sec;
+	
+}
+
+void setClock( ){
+	int hrs;
+	int min;
+	int sec;
+	printf("Saati ayarlayin: \n");
+	scanf("%d\n", &hrs);
+	scanf("%d\n", &min );
+	scanf("%d\n", &sec );
+	hours = hrs;
+	minutes = min;
+	seconds = sec;
+}
+
+
+void displayClk(void){
+	lcd_put_cur(0,0);
+	lcd_send_string("Saat:     :  :   ");
+	lcd_put_cur(0,8);
+	lcd_PrintInt(hours);
+	lcd_put_cur(0,11);
+	lcd_PrintInt(minutes);
+	lcd_put_cur(0,14);
+	lcd_PrintInt(seconds);
+}
+void displayUart(void){
+	int buff;
+	printf("Goruntulenecek ekrani secin:\n 1. Saat Ayarlama \n 2. Alarm Ayarlama \n 3. Alarm Goruntuleme\n");
+	scanf("%d",&buff);
+	
+	if ( buff == 1){
+		setClock();
+		displayUart();
+	}
+	else if ( buff == 2){
+		setAlarm();
+		displayUart();
+	}
+	else if ( buff == 3){
+		printf(" %d : %d : %d  \n", alarmHrs, alarmMin , alarmSec); 
+		displayUart();
+	}
+	else{
+		printf("Gecersiz bir secenek girdiniz.");
+		displayUart();
+	}
+	
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(htim);
+	
+	if(htim->Instance == TIM1) 
+  {
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+	
+		seconds ++;
+		if ( seconds > 59){
+			seconds = 0;
+			minutes ++ ;
+			lcd_put_cur(0,15);
+			lcd_send_data (' ');
+			
+		}
+		if ( minutes > 59){
+			minutes = 0;
+			hours ++;
+			lcd_put_cur(0,12);
+			lcd_send_data (' ');
+			
+		}
+		if ( hours > 23){
+			hours = 0;
+			days ++;
+			lcd_put_cur(0,9);
+			lcd_send_data (' ');
+
+		}
+		
+		}
+		letFire();
+		letWater();
+		printf(" %d : %d : %d  \n", hours, minutes, seconds);
+		displayClk();
+		if ( alarmCnt > 0 ){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+			alarmCnt = 0;
+		}
+		}
 
 
 
@@ -137,8 +286,6 @@ int main(void)
 	lcd_init();
 	lcd_clear();
 	
-	
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,9 +293,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
-	
-
+		
+		
+		
+		
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -281,93 +429,8 @@ static void MX_I2C1_Init(void)
 
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(htim);
-	
-	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-	
-	seconds++;
-	
-	if ( seconds > 59){
-		seconds = 0;
-		minutes ++ ;
-		lcd_put_cur(0,15);
-		lcd_send_data (' ');
-		
-	}
-	if ( minutes > 59){
-		minutes = 0;
-		hours ++;
-		lcd_put_cur(0,12);
-		lcd_send_data (' ');
-		
-	}
-	if ( hours > 23){
-		hours = 0;
-		days ++;
-		lcd_put_cur(0,9);
-		lcd_send_data (' ');
 
-	}
-	
-	printf(" %d : %d : %d  \n", hours, minutes, seconds); 
-	
-	
-	for (int i=0; i < 3; i++){
-		
-		if ( hours == alarmHrs && minutes == alarmMin && seconds == alarmSec ){
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
-			alarmSec = alarmSec + 30*i;
-			printf("ALARM !!!\n");
-			lcd_clear_line(1);
-			lcd_put_cur(1,0);
-			lcd_send_string("ALARM !!!");
-		}
-		if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin && seconds == alarmSec-20) ){
-			lcd_clear_line(1);
-			lcd_put_cur(1,0);
-			lcd_send_string("20 SN ERTELENDI");
-			printf("20 SN ERTELENDI\n");
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
-		}
-		if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin+1 && seconds == 0) ){
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
-			printf("ALARM !!!\n");
-			lcd_clear_line(1);
-			lcd_put_cur(1,0);
-			lcd_send_string("ALARM !!!");
-		}
-	}
-	
-	
-	if  ( !HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)){
-			printf("ALARM IPTAL EDILDI\n");
-			alarmCnt++;
-			lcd_clear_line(1);
-			lcd_put_cur(1,0);
-			lcd_send_string("ALARM IPTAL EDILDI");
-	}
-	
-	if ( alarmCnt > 0 ){
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
-	}
-	lcd_put_cur(0,0);
-	lcd_send_string("Saat:     :  :   ");
-	lcd_put_cur(0,8);
-	lcd_PrintInt(hours);
-	lcd_put_cur(0,11);
-	lcd_PrintInt(minutes);
-	lcd_put_cur(0,14);
-	lcd_PrintInt(seconds);
-	
-	
 
-  /* NOTE : This function should not be modified, when the callback is needed,
-            the HAL_TIM_PeriodElapsedCallback could be implemented in the user file
-   */
-}
 
 /**
   * @brief TIM1 Initialization Function
@@ -493,6 +556,17 @@ static void MX_GPIO_Init(void)
 
 PUTCHAR_PROTOTYPE
 {
+  HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
+  return ch;
+}
+
+GETCHAR_PROTOTYPE
+{
+  uint8_t ch = 0;
+  // Clear the Overrun flag just before receiving the first character
+  __HAL_UART_CLEAR_OREFLAG(&huart2);
+ 
+  HAL_UART_Receive(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
   HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
   return ch;
 }
