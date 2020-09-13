@@ -87,10 +87,13 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+  
 int seconds;
 int minutes;
 int hours;
 int days;
+
+uint8_t UARTmenu=0;
 
 int alarmCnt;
 int alarmHrs;
@@ -117,6 +120,7 @@ void letFire(void){
 				lcd_send_string("20 SN ERTELENDI");
 				printf("20 SN ERTELENDI\n");
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+				
 			}
 			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin+1 && seconds == 0) ){
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
@@ -129,12 +133,18 @@ void letFire(void){
 }
 
 void letWater(void){
+	
 	if  ( !HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)){
-				printf("ALARM IPTAL EDILDI\n");
+				printf("ALARM IPTAL !!!\n");
 				alarmCnt++;
 				lcd_clear_line(1);
 				lcd_put_cur(1,0);
-				lcd_send_string("ALARM IPTAL EDILDI");
+				lcd_send_string("ALARM IPTAL !!!");
+				
+		}
+	if ( alarmCnt > 0 ){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+			alarmCnt = 0;
 		}
 }
 
@@ -144,9 +154,9 @@ void setAlarm(){
 	int min;
 	int sec;
 	printf("Alarmi ayarlayin:  \n");
-	scanf("%d\n", &hrs);
-	scanf("%d\n", &min );
-	scanf("%d\n", &sec );
+	scanf("%d", &hrs);
+	scanf("%d", &min );
+	scanf("%d", &sec );
 	alarmHrs = hrs;
 	alarmMin = min;
 	alarmSec = sec;
@@ -158,14 +168,16 @@ void setClock( ){
 	int min;
 	int sec;
 	printf("Saati ayarlayin: \n");
-	scanf("%d\n", &hrs);
-	scanf("%d\n", &min );
-	scanf("%d\n", &sec );
+	scanf("%d", &hrs);
+	scanf("%d", &min );
+	scanf("%d", &sec );
 	hours = hrs;
 	minutes = min;
 	seconds = sec;
 }
 
+
+	
 
 void displayClk(void){
 	lcd_put_cur(0,0);
@@ -177,72 +189,46 @@ void displayClk(void){
 	lcd_put_cur(0,14);
 	lcd_PrintInt(seconds);
 }
+
 void displayUart(void){
-	int buff;
 	printf("Goruntulenecek ekrani secin:\n 1. Saat Ayarlama \n 2. Alarm Ayarlama \n 3. Alarm Goruntuleme\n");
-	scanf("%d",&buff);
 	
-	if ( buff == 1){
-		setClock();
-		displayUart();
+	HAL_UART_Receive(&huart2, (uint8_t *)&UARTmenu, 1, 0xFFFF);
+	if ( UARTmenu == 0x31){
+		setClock();	
 	}
-	else if ( buff == 2){
+	else if ( UARTmenu == 0x32){
 		setAlarm();
-		displayUart();
 	}
-	else if ( buff == 3){
-		printf(" %d : %d : %d  \n", alarmHrs, alarmMin , alarmSec); 
-		displayUart();
+	else if ( UARTmenu == 0x33){
+		printf(" Alarm : %d : %d : %d  \n", alarmHrs, alarmMin , alarmSec); 
 	}
 	else{
-		printf("Gecersiz bir secenek girdiniz.");
-		displayUart();
+		printf("Gecersiz bir secenek girdiniz.");		
 	}
 	
 }
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(htim);
-	
-	if(htim->Instance == TIM1) 
-  {
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-	
-		seconds ++;
-		if ( seconds > 59){
-			seconds = 0;
-			minutes ++ ;
-			lcd_put_cur(0,15);
-			lcd_send_data (' ');
-			
-		}
-		if ( minutes > 59){
-			minutes = 0;
-			hours ++;
-			lcd_put_cur(0,12);
-			lcd_send_data (' ');
-			
-		}
-		if ( hours > 23){
-			hours = 0;
-			days ++;
-			lcd_put_cur(0,9);
-			lcd_send_data (' ');
 
-		}
-		
-		}
-		letFire();
-		letWater();
-		printf(" %d : %d : %d  \n", hours, minutes, seconds);
-		displayClk();
-		if ( alarmCnt > 0 ){
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
-			alarmCnt = 0;
-		}
-		}
-
+void clockcor(void){
+			if ( seconds > 59){
+				seconds = 0;
+				minutes ++ ;
+				lcd_put_cur(0,15);
+				lcd_send_data (' ');
+			
+			}
+			if ( minutes > 59){
+				minutes = 0;
+				hours ++;
+				lcd_put_cur(0,12);
+				lcd_send_data (' ');
+				
+			}
+			if ( hours > 23){
+				hours = 0;
+				days ++;
+			}	
+}
 
 
 /* USER CODE END 0 */
@@ -286,6 +272,8 @@ int main(void)
 	lcd_init();
 	lcd_clear();
 	
+	
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -295,8 +283,16 @@ int main(void)
     /* USER CODE END WHILE */
 		
 		
+	
 		
 		
+		//lcd_put_cur(0,9);
+		//lcd_send_data (' ');
+		
+		displayUart();
+
+
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -570,6 +566,25 @@ GETCHAR_PROTOTYPE
   HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
   return ch;
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(htim);
+	
+
+	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+
+	seconds ++;
+	clockcor();
+	printf(" %d : %d : %d  \n", hours, minutes, seconds);
+	displayClk();
+	letFire();
+	letWater();
+	
+	
+}
+
 
 /* USER CODE END 4 */
 
