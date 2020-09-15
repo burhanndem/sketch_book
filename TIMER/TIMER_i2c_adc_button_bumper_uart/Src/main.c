@@ -28,6 +28,7 @@
 #include "string.h"
 
 
+
 #include "STM_MY_LCD16X2.h"
 
 
@@ -65,6 +66,8 @@ ADC_HandleTypeDef hadc1;
 
 I2C_HandleTypeDef hi2c1;
 
+SPI_HandleTypeDef hspi1;
+
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart2;
@@ -80,6 +83,7 @@ static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -87,47 +91,48 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-  
+// Clock Vars
 int seconds;
 int minutes;
 int hours;
 int days;
-
+// UART Vars
 uint8_t UARTmenu=0;
-
+// Alarm Vars
 int alarmCnt;
 int alarmHrs;
 int alarmMin;
 int alarmSec;
+// SPI Vars
+uint8_t SPIbuff[6];
 
 
-
-
+// Function Defs
 void letFire(void){
 	for (int i=0; i < 3; i++){
 			
 			if ( hours == alarmHrs && minutes == alarmMin && seconds == alarmSec ){
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
-				alarmSec = alarmSec + 30*i;
+				if (alarmSec+30 > 60){
+					alarmSec = ((alarmSec + 30)%60)*i;
+					alarmMin = alarmMin + 1;
+				}
+				else{
+					alarmSec =   alarmSec + 30 *i;
+				}
 				printf("ALARM !!!\n");
 				lcd_clear_line(1);
 				lcd_put_cur(1,0);
 				lcd_send_string("ALARM !!!");
 			}
-			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin && seconds == alarmSec-20) ){
+			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin && seconds == (alarmSec-20)) ){
+				
 				lcd_clear_line(1);
 				lcd_put_cur(1,0);
 				lcd_send_string("20 SN ERTELENDI");
 				printf("20 SN ERTELENDI\n");
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
 				
-			}
-			if (alarmCnt == 0 && (hours == alarmHrs && minutes == alarmMin+1 && seconds == 0) ){
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
-				printf("ALARM !!!\n");
-				lcd_clear_line(1);
-				lcd_put_cur(1,0);
-				lcd_send_string("ALARM !!!");
 			}
 	}
 }
@@ -138,13 +143,16 @@ void letWater(void){
 				printf("ALARM IPTAL !!!\n");
 				alarmCnt++;
 				lcd_clear_line(1);
+				alarmHrs=0;
+				alarmMin=0;
+				alarmSec=0;
 				lcd_put_cur(1,0);
 				lcd_send_string("ALARM IPTAL !!!");
 				
 		}
 	if ( alarmCnt > 0 ){
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
-			alarmCnt = 0;
+			
 		}
 }
 
@@ -154,13 +162,16 @@ void setAlarm(){
 	int min;
 	int sec;
 	printf("Alarmi ayarlayin:  \n");
+	memset(&hrs, '\0', sizeof(hrs));
 	scanf("%d", &hrs);
+	memset(&min, '\0', sizeof(min));
 	scanf("%d", &min );
+	memset(&sec, '\0', sizeof(sec));
 	scanf("%d", &sec );
 	alarmHrs = hrs;
 	alarmMin = min;
 	alarmSec = sec;
-	
+	alarmCnt = 0;
 }
 
 void setClock( ){
@@ -168,8 +179,11 @@ void setClock( ){
 	int min;
 	int sec;
 	printf("Saati ayarlayin: \n");
+	memset(&hrs, '\0', sizeof(hrs));
 	scanf("%d", &hrs);
+	memset(&min, '\0', sizeof(min));
 	scanf("%d", &min );
+	memset(&sec, '\0', sizeof(sec));
 	scanf("%d", &sec );
 	hours = hrs;
 	minutes = min;
@@ -191,9 +205,8 @@ void displayClk(void){
 }
 
 void displayUart(void){
-	printf("Goruntulenecek ekrani secin:\n 1. Saat Ayarlama \n 2. Alarm Ayarlama \n 3. Alarm Goruntuleme\n");
-	
 	HAL_UART_Receive(&huart2, (uint8_t *)&UARTmenu, 1, 0xFFFF);
+	printf("Goruntulenecek ekrani secin:\n 1. Saat Ayarlama \n 2. Alarm Ayarlama \n 3. Alarm Goruntuleme\n");
 	if ( UARTmenu == 0x31){
 		setClock();	
 	}
@@ -204,8 +217,9 @@ void displayUart(void){
 		printf(" Alarm : %d : %d : %d  \n", alarmHrs, alarmMin , alarmSec); 
 	}
 	else{
-		printf("Gecersiz bir secenek girdiniz.");		
+		printf("Gecersiz bir secenek girdiniz.\n");		
 	}
+	memset(&UARTmenu, '\0', sizeof(UARTmenu));
 	
 }
 
@@ -228,7 +242,21 @@ void clockcor(void){
 				hours = 0;
 				days ++;
 			}	
+			if ( alarmSec > 59){
+				alarmSec = alarmSec%60;
+				
+			}
+			if ( alarmMin > 59){
+				alarmMin = alarmMin%60;
+				
+				
+			}
+			if ( alarmHrs > 23){
+				alarmHrs = alarmHrs%24;
+				
+			}
 }
+
 
 
 /* USER CODE END 0 */
@@ -265,6 +293,7 @@ int main(void)
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 	
 	HAL_TIM_Base_Start_IT(&htim1);
@@ -272,8 +301,10 @@ int main(void)
 	lcd_init();
 	lcd_clear();
 	
+	HAL_SPI_Receive_IT(&hspi1, SPIbuff, 3);
 	
 	
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -283,15 +314,8 @@ int main(void)
     /* USER CODE END WHILE */
 		
 		
-	
-		
-		
-		//lcd_put_cur(0,9);
-		//lcd_send_data (' ');
-		
 		displayUart();
-
-
+		
 
     /* USER CODE BEGIN 3 */
   }
@@ -407,7 +431,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 400000;
+  hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -425,8 +449,42 @@ static void MX_I2C1_Init(void)
 
 }
 
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
 
+  /* USER CODE BEGIN SPI1_Init 0 */
 
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_SLAVE;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
 
 /**
   * @brief TIM1 Initialization Function
@@ -525,26 +583,28 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : PD12 PD13 PD14 PD15 */
   GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-	
-	/*Configure GPIO pin : PA14 */
-	GPIO_InitStruct.Pin = GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
- /*Configure GPIO pin : PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10;	
+
+  /*Configure GPIO pin : PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
