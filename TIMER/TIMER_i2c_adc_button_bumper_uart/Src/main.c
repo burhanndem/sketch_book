@@ -105,6 +105,9 @@ int alarmMin;
 int alarmSec;
 // SPI Vars
 uint8_t SPIbuff[6];
+uint8_t SPIhours;
+uint8_t SPImins;
+uint8_t SPIsecs;
 
 
 // Function Defs
@@ -302,9 +305,18 @@ int main(void)
 	lcd_clear();
 	
 	HAL_SPI_Receive_IT(&hspi1, SPIbuff, 3);
-	
-	
 
+	HAL_Delay(3500);
+	
+	SPIhours=	SPIbuff[0];
+	SPImins	=	SPIbuff[1];
+	SPIsecs	=	SPIbuff[2];
+	
+	hours = SPIhours;
+	minutes = SPImins;
+	seconds = SPIsecs;
+	
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -312,10 +324,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-		
-		
-		displayUart();
-		
 
     /* USER CODE BEGIN 3 */
   }
@@ -577,14 +585,25 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(CS_Pin_GPIO_Port, CS_Pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : CS_Pin_Pin */
+  GPIO_InitStruct.Pin = CS_Pin_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(CS_Pin_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD12 PD13 PD14 PD15 */
   GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
@@ -643,6 +662,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	letWater();
 	
 	
+}
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hspi);
+
+  /* NOTE : This function should not be modified, when the callback is needed,
+            the HAL_SPI_TxCpltCallback should be implemented in the user file
+   */
 }
 
 
