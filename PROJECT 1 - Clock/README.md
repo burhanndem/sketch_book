@@ -22,4 +22,4 @@ A clock project with STM32F407.
 * v0.1 - TIMER configurations and UART to display it in the terminal with USB-TTL and ADC to set an alarm
 * v0.2 - I2C to display it on the 2x16 LCD Screen with I2C Integrated Module
 * v0.3 - Buzzer and a button added
-* v0.4 - NodeMCU is fetching the time data through the web and communicate the STM with SPI and set the clock
+* v0.4 - NodeMCU is fetching the time data through the web and communicate with STM through SPI and set the clock
